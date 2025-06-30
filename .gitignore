@@ -35,3 +35,9 @@ dist-ssr
 
 # Implementation logs
 logs/
+
+# Docker and development files
+.dockerignore
+CLAUDE.md
+Dockerfile.dev
+docker-compose.yml
