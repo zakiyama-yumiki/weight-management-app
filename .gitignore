@@ -41,3 +41,5 @@ logs/
 CLAUDE.md
 Dockerfile.dev
 docker-compose.yml
+
+playwright.config.js
