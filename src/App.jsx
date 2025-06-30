@@ -1,35 +1,61 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import { WeightProvider } from './contexts/WeightContext';
+import Layout from './components/Layout/Layout';
+import Dashboard from './pages/Dashboard';
+import WeightInput from './pages/WeightInput';
+import History from './pages/History';
+import Goals from './pages/Goals';
+import Settings from './pages/Settings';
+import './styles/global.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentRoute, setCurrentRoute] = useState('dashboard');
+
+  const getPageTitle = (route) => {
+    switch (route) {
+      case 'dashboard':
+        return '体重管理アプリ - ダッシュボード';
+      case 'input':
+        return '体重管理アプリ - 記録入力';
+      case 'history':
+        return '体重管理アプリ - 履歴';
+      case 'goals':
+        return '体重管理アプリ - 目標';
+      case 'settings':
+        return '体重管理アプリ - 設定';
+      default:
+        return '体重管理アプリ';
+    }
+  };
+
+  const renderCurrentPage = () => {
+    switch (currentRoute) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'input':
+        return <WeightInput />;
+      case 'history':
+        return <History />;
+      case 'goals':
+        return <Goals />;
+      case 'settings':
+        return <Settings />;
+      default:
+        return <Dashboard />;
+    }
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <WeightProvider>
+      <Layout
+        title={getPageTitle(currentRoute)}
+        currentRoute={currentRoute}
+        onRouteChange={setCurrentRoute}
+      >
+        {renderCurrentPage()}
+      </Layout>
+    </WeightProvider>
+  );
 }
 
-export default App
+export default App;
