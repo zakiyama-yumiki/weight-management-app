@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWeight } from '../contexts/WeightContext';
+import WeightChart from '../components/Charts/WeightChart';
+import { TimePeriod } from '../types';
 
 const Dashboard: React.FC = () => {
   const { weightRecords, weightGoal, getLatestRecord, loading } = useWeight();
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('month');
   
   const latestRecord = getLatestRecord();
   
@@ -105,6 +108,42 @@ const Dashboard: React.FC = () => {
               ></div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* グラフ表示 */}
+      {weightRecords.length > 0 && (
+        <div className="space-y-4">
+          {/* 期間選択 */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium mb-4">グラフ表示期間</h3>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'week' as TimePeriod, label: '1週間' },
+                { value: 'month' as TimePeriod, label: '1ヶ月' },
+                { value: 'halfYear' as TimePeriod, label: '6ヶ月' },
+                { value: 'year' as TimePeriod, label: '1年' },
+              ].map((period) => (
+                <button
+                  key={period.value}
+                  onClick={() => setSelectedPeriod(period.value)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedPeriod === period.value
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {period.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* グラフコンポーネント */}
+          <WeightChart 
+            data={weightRecords} 
+            period={selectedPeriod}
+          />
         </div>
       )}
 
