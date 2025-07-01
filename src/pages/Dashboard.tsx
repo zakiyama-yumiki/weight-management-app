@@ -2,12 +2,29 @@ import React, { useState } from 'react';
 import { useWeight } from '../contexts/WeightContext';
 import WeightChart from '../components/Charts/WeightChart';
 import { TimePeriod } from '../types';
+import { 
+  calculateStats, 
+  calculateGoalProgress, 
+  calculateRemainingWeight,
+  calculateWeightTrend,
+  formatDate as formatDateUtil
+} from '../utils/calculations';
 
 const Dashboard: React.FC = () => {
   const { weightRecords, weightGoal, getLatestRecord, loading } = useWeight();
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('month');
   
   const latestRecord = getLatestRecord();
+  const stats = weightRecords.length > 0 ? calculateStats(weightRecords, selectedPeriod) : null;
+  const trend = weightRecords.length > 0 ? calculateWeightTrend(weightRecords) : 'stable';
+  
+  const goalProgress = weightGoal && latestRecord 
+    ? calculateGoalProgress(latestRecord.weight, weightGoal.targetWeight, weightGoal.currentWeight)
+    : 0;
+  
+  const remainingWeight = weightGoal && latestRecord
+    ? calculateRemainingWeight(latestRecord.weight, weightGoal.targetWeight)
+    : 0;
   
   const getBMICategory = (bmi: number): string => {
     if (bmi < 18.5) return '低体重';
@@ -16,12 +33,20 @@ const Dashboard: React.FC = () => {
     return '肥満(2度以上)';
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ja-JP', {
-      month: 'numeric',
-      day: 'numeric',
-    });
+  const getTrendIcon = (trend: 'increasing' | 'decreasing' | 'stable') => {
+    switch (trend) {
+      case 'increasing': return '📈';
+      case 'decreasing': return '📉';
+      case 'stable': return '➡️';
+    }
+  };
+  
+  const getTrendText = (trend: 'increasing' | 'decreasing' | 'stable') => {
+    switch (trend) {
+      case 'increasing': return '増加傾向';
+      case 'decreasing': return '減少傾向';
+      case 'stable': return '安定';
+    }
   };
 
   if (loading) {
@@ -50,7 +75,7 @@ const Dashboard: React.FC = () => {
             {latestRecord ? `${latestRecord.weight.toFixed(1)} kg` : '-- kg'}
           </p>
           <p className="text-sm text-gray-500 mt-1">
-            {latestRecord ? `最新記録 (${formatDate(latestRecord.date)})` : '記録なし'}
+            {latestRecord ? `最新記録 (${formatDateUtil(latestRecord.date)})` : '記録なし'}
           </p>
         </div>
         
@@ -91,21 +116,26 @@ const Dashboard: React.FC = () => {
             <div className="flex justify-between text-sm font-medium">
               <span>目標まで</span>
               <span className={`${
-                latestRecord.weight > weightGoal.targetWeight ? 'text-red-600' : 'text-green-600'
+                weightGoal.isAchieved ? 'text-green-600' : 'text-blue-600'
               }`}>
-                {Math.abs(latestRecord.weight - weightGoal.targetWeight).toFixed(1)} kg
+                {weightGoal.isAchieved ? '達成済み！' : `あと ${remainingWeight} kg`}
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                style={{
-                  width: `${Math.min(100, Math.max(0, 
-                    ((weightGoal.currentWeight - latestRecord.weight) / 
-                     (weightGoal.currentWeight - weightGoal.targetWeight)) * 100
-                  ))}%`
-                }}
-              ></div>
+            <div className="mt-2">
+              <div className="flex justify-between text-xs text-gray-600 mb-1">
+                <span>進捗率</span>
+                <span>{Math.round(goalProgress)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    goalProgress >= 100 ? 'bg-green-600' : 'bg-blue-600'
+                  }`}
+                  style={{
+                    width: `${Math.min(100, Math.max(0, goalProgress))}%`
+                  }}
+                ></div>
+              </div>
             </div>
           </div>
         </div>
@@ -148,31 +178,60 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* 統計情報 */}
-      {weightRecords.length > 0 && (
+      {stats && (
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium mb-4">記録統計</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{weightRecords.length}</p>
-              <p className="text-sm text-gray-500">総記録数</p>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">期間別統計</h3>
+            <span className="text-sm text-gray-500">
+              {formatDateUtil(stats.startDate)} ~ {formatDateUtil(stats.endDate)}
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">記録数</p>
+              <p className="text-xl font-bold text-blue-600">{stats.totalRecords}</p>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">
-                {(weightRecords.reduce((sum, r) => sum + r.weight, 0) / weightRecords.length).toFixed(1)}
-              </p>
-              <p className="text-sm text-gray-500">平均体重 (kg)</p>
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">平均体重</p>
+              <p className="text-xl font-bold text-green-600">{stats.averageWeight} kg</p>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-orange-600">
-                {Math.max(...weightRecords.map(r => r.weight)).toFixed(1)}
-              </p>
-              <p className="text-sm text-gray-500">最大体重 (kg)</p>
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">最大体重</p>
+              <p className="text-xl font-bold text-orange-600">{stats.maxWeight} kg</p>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">
-                {Math.min(...weightRecords.map(r => r.weight)).toFixed(1)}
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">最小体重</p>
+              <p className="text-xl font-bold text-purple-600">{stats.minWeight} kg</p>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">変化量</p>
+              <p className={`text-xl font-bold ${
+                stats.weightChange > 0 ? 'text-red-600' : stats.weightChange < 0 ? 'text-green-600' : 'text-gray-600'
+              }`}>
+                {stats.weightChange > 0 ? '+' : ''}{stats.weightChange} kg
               </p>
-              <p className="text-sm text-gray-500">最小体重 (kg)</p>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">変化率</p>
+              <p className={`text-xl font-bold ${
+                stats.weightChangePercentage > 0 ? 'text-red-600' : stats.weightChangePercentage < 0 ? 'text-green-600' : 'text-gray-600'
+              }`}>
+                {stats.weightChangePercentage > 0 ? '+' : ''}{stats.weightChangePercentage}%
+              </p>
+            </div>
+          </div>
+          
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center gap-2">
+            <span className="text-2xl">{getTrendIcon(trend)}</span>
+            <div>
+              <p className="text-sm font-medium text-gray-800">現在の傾向</p>
+              <p className="text-xs text-gray-600">{getTrendText(trend)}</p>
             </div>
           </div>
         </div>
