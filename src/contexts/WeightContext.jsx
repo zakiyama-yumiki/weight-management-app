@@ -83,15 +83,26 @@ export const WeightProvider = ({ children }) => {
   };
 
   const setWeightGoal = (goalData) => {
-    const newGoal = {
-      id: generateId(),
-      targetWeight: parseFloat(goalData.targetWeight),
-      currentWeight: parseFloat(goalData.currentWeight),
-      startDate: getTodayString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isAchieved: false,
-    };
+    let newGoal;
+    
+    if (goalData.id) {
+      // 既存の目標を更新
+      newGoal = {
+        ...goalData,
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      // 新規目標を作成
+      newGoal = {
+        id: generateId(),
+        targetWeight: parseFloat(goalData.targetWeight),
+        currentWeight: parseFloat(goalData.currentWeight),
+        startDate: getTodayString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isAchieved: false,
+      };
+    }
 
     saveGoal(newGoal);
     
